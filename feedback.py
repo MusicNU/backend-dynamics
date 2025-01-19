@@ -8,7 +8,6 @@ from music21 import converter, dynamics, tempo
 y, sr = librosa.load("user_recording.wav")
 rms = librosa.feature.rms(y=y)[0]
 
-
 # Extract dynamics and tempo from sheet music
 score = converter.parse("sheet_music.xml")
 sheet_dynamics = []
