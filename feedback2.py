@@ -1,5 +1,4 @@
-import librosa
-import music21
+import librosa, music21
 import numpy as np
 from librosa.sequence import dtw
 from music21 import converter, dynamics, tempo
@@ -60,19 +59,18 @@ def analyze_performance(rms: np.ndarray, expected_rms: list, time_points: list) 
             )
     return feedback
 
-def main(audio_path: str = "user_recording.wav", sheet_music_path: str = "sheet_music.xml"):
-    # Load and process audio
+def main():
+    audio_path = "user_recording.wav"
+    sheet_music_path = "sheet_music.xml"
+
     rms, sr = load_audio(audio_path)
     
-    # Load and process score
     score = converter.parse(sheet_music_path)
     sheet_dynamics = get_dynamics(score)
     beats_per_second = get_tempo(score)
     
-    # Generate expected RMS curve
     expected_rms, time_points = generate_expected_rms(sheet_dynamics, beats_per_second, sr)
     
-    # Analyze and get feedback
     feedback = analyze_performance(rms, expected_rms, time_points)
     
     # Print results
