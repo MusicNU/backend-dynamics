@@ -8,6 +8,9 @@ dynamic_to_rms = {
     "mf": -20, "f": -10, "ff": 0
 }
 
+# The db for a rest, i.e. silent
+rest_db = -80
+
 def load_audio(audio_path: str) -> tuple[np.ndarray, int]:
     """Load audio file and calculate RMS."""
     y, sample_rate = librosa.load(audio_path)
@@ -55,7 +58,7 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: List[Tuple[floa
 
         cur_end: float = next_note_change
         cur_tempo: int = tempos_list[tempo_ptr][1]
-        cur_dyn = dynamic_to_rms.get(dynamics_list[dyn_ptr][1]) if note.isNote else -80
+        cur_dyn = dynamic_to_rms.get(dynamics_list[dyn_ptr][1]) if note.isNote else rest_db
 
         if(next_dynamic_change < next_note_change):
             cur_end = next_dynamic_change
