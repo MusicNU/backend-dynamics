@@ -3,11 +3,16 @@ import numpy as np
 from librosa.sequence import dtw
 from music21 import converter, dynamics, tempo
 
+dynamic_to_rms = {
+    "pp": -40, "p": -30, "mp": -25,
+    "mf": -20, "f": -10, "ff": 0
+}
+
 def load_audio(audio_path: str) -> tuple[np.ndarray, int]:
     """Load audio file and calculate RMS."""
-    y, sr = librosa.load(audio_path)
+    y, sample_rate = librosa.load(audio_path)
     rms = librosa.feature.rms(y=y)[0]
-    return rms, sr
+    return rms, sample_rate
 
 def get_dynamics(score: music21.stream.Score) -> list[tuple[float, str]]:
     """Extract dynamics markings from score."""
@@ -17,30 +22,51 @@ def get_dynamics(score: music21.stream.Score) -> list[tuple[float, str]]:
             sheet_dynamics.append((element.offset, element.value))
     return sheet_dynamics
 
-def get_tempo(score: music21.stream.Score) -> float:
+def get_tempos(score: music21.stream.Score) -> list[tuple[float, str]]:
     """Get tempo in beats per second."""
-    tempo_marking = score.flat.getElementsByClass(tempo.MetronomeMark)[0]
-    tempo_bpm = tempo_marking.number
-    return tempo_bpm / 60
+    tempos = []
+    for metronome_mark in score.flatten().getElementsByClass(tempo.MetronomeMark):
+        tempos.append((metronome_mark.offset, metronome_mark.number))
+    return tempos
 
-def generate_expected_rms(sheet_dynamics: list, beats_per_second: float, sr: int) -> tuple[list, list]:
-    """Generate expected RMS curve from sheet music dynamics."""
-    dynamic_to_rms = {
-        "pp": -40, "p": -30, "mp": -25,
-        "mf": -20, "f": -10, "ff": 0
-    }
-    
-    expected_rms = []
-    time_points = []
-    
-    for i, (start_offset, dynamic) in enumerate(sheet_dynamics[:-1]):
-        next_offset = sheet_dynamics[i + 1][0]
-        duration = next_offset - start_offset
-        dynamic_rms = dynamic_to_rms.get(dynamic, -30)
-        
-        samples = int((duration / beats_per_second) * sr)
-        expected_rms.extend([dynamic_rms] * samples)
-        time_points.extend(np.linspace(start_offset, next_offset, samples))
+def rms_note_by_note(score: music21.stream.Score, dynamics_list: List[Tuple[float, str]], tempos_list: List[Tuple[float, str]], sample_rate: int) -> tuple[list, list]:
+
+    def extend_expected_rms(start: float, end: float, decibel: int, tempo: int) -> None:
+        duration: float = end - start
+        samples: int = int((duration / tempo) * sample_rate)
+        expected_rms.extend([decibel] * samples)
+        time_points.extend(np.linspace(start, end, samples))
+
+    expected_rms: list[float] = []
+    time_points: list[float] = []
+    note_ptr, dyn_ptr, tempo_ptr = 0, 0, 0
+    cur_beat = 0.0
+
+    # only consider the first part in the score, for now at least
+    notes_and_rests = list(score.parts[0].recurse().notesAndRests)
+
+    while note_ptr < len(notes_and_rests):
+        note = notes_and_rests[note_ptr]
+
+        note_length: float = note.duration.quarterLength
+        next_note_change: float = cur_beat + note_length
+        next_dynamic_change: float = dynamics_list[dyn_ptr + 1][0] if dyn_ptr < len(dynamics_list) - 1 else float('inf')
+        next_tempo_change: float = tempos_list[tempo_ptr + 1][0] if tempo_ptr < len(tempos_list) - 1 else float('inf')
+
+        cur_end: float = next_note_change
+        cur_tempo: int = tempos_list[tempo_ptr][1]
+        cur_dyn = dynamic_to_rms.get(dynamics_list[dyn_ptr][1]) if note.isNote else -80
+
+        if(next_dynamic_change < next_note_change):
+            cur_end = next_dynamic_change
+            dyn_ptr += 1   
+        else:
+            if next_tempo_change == next_note_change:
+                tempo_ptr += 1
+            note_ptr += 1
+
+        extend_expected_rms(start=cur_beat, end=cur_end, decibel=cur_dyn, tempo=cur_tempo)
+        cur_beat = min(next_note_change, next_dynamic_change, next_tempo_change)
         
     return expected_rms, time_points
 
@@ -63,13 +89,13 @@ def main():
     audio_path = "user_recording.wav"
     sheet_music_path = "sheet_music.xml"
 
-    rms, sr = load_audio(audio_path)
+    rms, sample_rate = load_audio(audio_path)
     
     score = converter.parse(sheet_music_path)
-    sheet_dynamics = get_dynamics(score)
-    beats_per_second = get_tempo(score)
+    dynamics_list = get_dynamics(score)
+    tempo_list = get_tempos(score)
     
-    expected_rms, time_points = generate_expected_rms(sheet_dynamics, beats_per_second, sr)
+    expected_rms, time_points = rms_note_by_note(score, dynamics_list, tempo_list, sample_rate)
     
     feedback = analyze_performance(rms, expected_rms, time_points)
     
