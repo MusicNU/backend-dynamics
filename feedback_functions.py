@@ -32,7 +32,7 @@ def get_tempos(score: music21.stream.Score) -> list[tuple[float, str]]:
         tempos.append((metronome_mark.offset, metronome_mark.number))
     return tempos
 
-def rms_note_by_note(score: music21.stream.Score, dynamics_list: List[Tuple[float, str]], tempos_list: List[Tuple[float, str]], sample_rate: int) -> tuple[list, list]:
+def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[float, str]], tempos_list: list[tuple[float, str]], sample_rate: int) -> tuple[list, list]:
 
     def extend_expected_rms(start: float, end: float, decibel: int, tempo: int) -> None:
         duration: float = end - start
