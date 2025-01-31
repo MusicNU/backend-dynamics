@@ -5,11 +5,9 @@ from music21 import converter, dynamics, tempo
 
 dynamic_to_rms = {
     "pp": -40, "p": -30, "mp": -25,
-    "mf": -20, "f": -10, "ff": 0
+    "mf": -20, "f": -10, "ff": 0, 
+    "rest": -80
 }
-
-# The db for a rest, i.e. silent
-rest_db = -80
 
 def load_audio(audio_path: str) -> tuple[np.ndarray, int]:
     """Load audio file and calculate RMS."""
@@ -58,7 +56,7 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
 
         cur_end: float = next_note_change
         cur_tempo: int = tempos_list[tempo_ptr][1]
-        cur_dyn = dynamic_to_rms.get(dynamics_list[dyn_ptr][1]) if note.isNote else rest_db
+        cur_dyn = dynamic_to_rms.get(dynamics_list[dyn_ptr][1]) if note.isNote else dynamic_to_rms.get("rest")
 
         if(next_dynamic_change < next_note_change):
             cur_end = next_dynamic_change
