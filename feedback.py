@@ -36,7 +36,7 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
         duration: float = end - start
         samples: int = int((duration / tempo) * sample_rate)
         expected_rms.extend([decibel] * samples)
-        time_points.extend(np.linspace(start, end, samples))
+        time_points.extend(np.linspace(start, end, samples, endpoint=False))
 
     expected_rms: list[float] = []
     time_points: list[float] = []
