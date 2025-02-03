@@ -60,7 +60,7 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
 
         if(next_dynamic_change < next_note_change):
             cur_end = next_dynamic_change
-            dyn_ptr += 1   
+            dyn_ptr += 1
         else:
             if next_tempo_change == next_note_change:
                 tempo_ptr += 1
