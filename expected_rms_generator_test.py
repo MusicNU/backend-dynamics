@@ -4,6 +4,7 @@ from music21 import converter
 
 def dyanmics_tempos_score_samplerate(filename: str) -> list[music21.stream.Score, list[tuple[float, str]], list[tuple[float, str]], int]:
     sample_rate = 48100
+    sample_rate = 4000
     score: music21.stream.Score = converter.parse(filename)
     dynamics_list: list[tuple[float, str]] = get_dynamics(score)
     tempos_list: list[tuple[float, str]] = get_tempos(score)
@@ -43,5 +44,20 @@ def test_rms_note_by_note() -> None:
     assert len(time_points) == len(expected_rms)
     verifier(correct_beat_and_dynamic, expected_rms, time_points)  
 
+    score, dynamics_list, tempos_list, sample_rate = dyanmics_tempos_score_samplerate(".\\mxl_test_files\\test10.mxl")
+    expected_rms, time_points = rms_note_by_note(score, dynamics_list, tempos_list, sample_rate)
+    correct_beat_and_dynamic: list[tuple[float, str]] = [
+        (5.0, "default"), (9.0, "rest"), (21.0, "default"), (24.0, "rest")
+    ]
+    assert len(time_points) == len(expected_rms)
+    verifier(correct_beat_and_dynamic, expected_rms, time_points)  
+
+    score, dynamics_list, tempos_list, sample_rate = dyanmics_tempos_score_samplerate(".\\mxl_test_files\\test11.mxl")
+    expected_rms, time_points = rms_note_by_note(score, dynamics_list, tempos_list, sample_rate)
+    correct_beat_and_dynamic: list[tuple[float, str]] = [
+        (2.0, "default"), (2.5, "rest"), (3.5, "fff"), (4.0, "rest"), (5.625, "fff"), (5.75, "rest"), (6.0, "fff")
+    ]
+    assert len(time_points) == len(expected_rms)
+    verifier(correct_beat_and_dynamic, expected_rms, time_points)  
 
 test_rms_note_by_note()
