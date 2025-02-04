@@ -3,11 +3,15 @@ import numpy as np
 from librosa.sequence import dtw
 from music21 import converter, dynamics, tempo
 
-dynamic_to_rms = {
+dynamic_to_rms: dict[str, int] = {
     "pp": -40, "p": -30, "mp": -25,
     "mf": -20, "f": -10, "ff": 0, 
-    "rest": -80
+    "rest": -80,        # setting rest db to -80
+    "default": -20      # if no dynamic is given, default sets to -20db
 }
+
+#if no tempo is provided in the score, default to 120bpm
+default_tempo: int = 120
 
 def load_audio(audio_path: str) -> tuple[np.ndarray, int]:
     """Load audio file and calculate RMS."""
@@ -18,16 +22,24 @@ def load_audio(audio_path: str) -> tuple[np.ndarray, int]:
 def get_dynamics(score: music21.stream.Score) -> list[tuple[float, str]]:
     """Extract dynamics markings from score."""
     sheet_dynamics = []
-    for element in score.flat:
+    for element in score.flatten():
         if isinstance(element, dynamics.Dynamic):
             sheet_dynamics.append((element.offset, element.value))
+
+    # if the dynamic is not provided for the score, or the dynamic is not provided until mid-way through the music
+    if not sheet_dynamics or sheet_dynamics[0][0] > 0.0:
+        sheet_dynamics.insert(0, (0.0, "default"))
     return sheet_dynamics
 
-def get_tempos(score: music21.stream.Score) -> list[tuple[float, str]]:
+def get_tempos(score: music21.stream.Score) -> list[tuple[float, int]]:
     """Get tempo in beats per second."""
     tempos = []
     for metronome_mark in score.flatten().getElementsByClass(tempo.MetronomeMark):
         tempos.append((metronome_mark.offset, metronome_mark.number))
+        
+    # if the tempo is not provided for the score, or the tempo is not provided until mid-way through the music
+    if not tempos or tempos[0][0] > 0.0:
+        tempos.insert(0, (0.0, default_tempo))
     return tempos
 
 def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[float, str]], tempos_list: list[tuple[float, str]], sample_rate: int) -> tuple[list, list]:
@@ -60,7 +72,7 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
 
         if(next_dynamic_change < next_note_change):
             cur_end = next_dynamic_change
-            dyn_ptr += 1   
+            dyn_ptr += 1
         else:
             if next_tempo_change == next_note_change:
                 tempo_ptr += 1
