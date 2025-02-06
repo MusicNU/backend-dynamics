@@ -84,18 +84,26 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
     return expected_rms, time_points
 
 def analyze_performance(rms: np.ndarray, expected_rms: list, time_points: list) -> list[str]:
-    """Analyze performance and generate feedback."""
-    path, _ = dtw(rms, np.array(expected_rms), subseq=True)
+    """Analyze performance and generate feedback based on loudness differences."""
+    
+    frame_times = librosa.frames_to_time(np.arange(len(rms)), sr=sample_rate)
     
     feedback = []
     for i, j in path:
-        actual_db = librosa.amplitude_to_db([rms[i]])[0]
+        actual_time = frame_times[i]
+        expected_time = time_points[j]
+
+        # Convert RMS energy to dB
+        actual_db = librosa.amplitude_to_db([rms[i]], ref=np.max)[0]  # Normalize
         expected_db = expected_rms[j]
-        if abs(actual_db - expected_db) > 5:  # tolerance
+
+        # Adjust tolerance as needed
+        if abs(actual_db - expected_db) > 5:  
             feedback.append(
-                f"Mismatch at time {time_points[j]:.2f}s: "
+                f"Mismatch at time {expected_time:.2f}s (actual {actual_time:.2f}s): "
                 f"Expected {expected_db:.1f} dB, got {actual_db:.1f} dB."
             )
+
     return feedback
 
 def main():
