@@ -88,6 +88,9 @@ def analyze_performance(rms: np.ndarray, expected_rms: list, time_points: list) 
     
     frame_times = librosa.frames_to_time(np.arange(len(rms)), sr=sample_rate)
     
+    # Dynamic Time Warping to align actual RMS with expected RMS, should better account for differences in timing measurement
+    path, _ = dtw(rms, np.array(expected_rms), subseq=True)
+
     feedback = []
     for i, j in path:
         actual_time = frame_times[i]
