@@ -1,4 +1,6 @@
 import librosa, music21
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 import numpy as np
 from librosa.sequence import dtw
 from music21 import converter, dynamics, tempo
@@ -83,20 +85,26 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
         
     return expected_rms, time_points
 
+
 def analyze_performance(rms: np.ndarray, expected_rms: list, time_points: list) -> list[str]:
     """Analyze performance and generate feedback."""
-    path, _ = dtw(rms, np.array(expected_rms), subseq=True)
-    
+    D, wp = dtw(rms.reshape(-1, 1), np.array(expected_rms).reshape(-1, 1), subseq=True)
+    print("Warping Path:", wp)
+
+    # wp contains the warping path as a list of (i, j) index pairs
     feedback = []
-    for i, j in path:
-        actual_db = librosa.amplitude_to_db([rms[i]])[0]
+    for i, j in wp:
+        actual_db = librosa.amplitude_to_db([rms[i]], ref=np.max)[0]
+
         expected_db = expected_rms[j]
-        if abs(actual_db - expected_db) > 5:  # tolerance
+
+        if abs(actual_db - expected_db) > 0.1:  # Adjust the tolerance as needed
             feedback.append(
                 f"Mismatch at time {time_points[j]:.2f}s: "
                 f"Expected {expected_db:.1f} dB, got {actual_db:.1f} dB."
             )
     return feedback
+
 
 def main():
     audio_path = "user_recording.wav"
