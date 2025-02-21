@@ -4,6 +4,8 @@ from scipy.spatial.distance import euclidean
 import numpy as np
 from librosa.sequence import dtw
 from music21 import converter, dynamics, tempo
+from scipy.interpolate import interp1d
+
 
 dynamic_to_rms: dict[str, int] = {
     "pp": -40, "p": -30, "mp": -25,
@@ -85,24 +87,23 @@ def rms_note_by_note(score: music21.stream.Score, dynamics_list: list[tuple[floa
         
     return expected_rms, time_points
 
+def align_expected_rms(time_points: list, expected_rms: list, rms_len: int) -> np.ndarray:
+    """Interpolates expected RMS to match the frame length of actual RMS."""
+    interp_func = interp1d(time_points, expected_rms, kind="linear", fill_value="extrapolate")
+    return interp_func(np.linspace(0, time_points[-1], rms_len))
 
 def analyze_performance(rms: np.ndarray, expected_rms: list, time_points: list) -> list[str]:
-    """Analyze performance and generate feedback."""
-    D, wp = dtw(rms.reshape(-1, 1), np.array(expected_rms).reshape(-1, 1), subseq=True)
-    print("Warping Path:", wp)
+    """Analyze performance by aligning RMS values and providing feedback."""
+    interpolated_expected_rms = align_expected_rms(time_points, expected_rms, len(rms))
+    
+    actual_db = librosa.amplitude_to_db(rms, ref=np.max)
+    expected_db = librosa.amplitude_to_db(interpolated_expected_rms, ref=np.max)
 
-    # wp contains the warping path as a list of (i, j) index pairs
     feedback = []
-    for i, j in wp:
-        actual_db = librosa.amplitude_to_db([rms[i]], ref=np.max)[0]
+    for i, (act, exp) in enumerate(zip(actual_db, expected_db)):
+        if abs(act - exp) > 5:  # Adjust tolerance
+            feedback.append(f"Mismatch at time {i / len(rms) * time_points[-1]:.2f}s: Expected {exp:.1f} dB, got {act:.1f} dB.")
 
-        expected_db = expected_rms[j]
-
-        if abs(actual_db - expected_db) > 0.1:  # Adjust the tolerance as needed
-            feedback.append(
-                f"Mismatch at time {time_points[j]:.2f}s: "
-                f"Expected {expected_db:.1f} dB, got {actual_db:.1f} dB."
-            )
     return feedback
 
 
