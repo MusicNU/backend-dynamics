@@ -1,1 +1,12 @@
 # backend-dynamics
+Runtime:
+Python 3.13
+
+Dependencies:
+librosa>=0.10.2,<0.11.0
+numpy>=2.0.0,<3.0.0
+music21>=9.3.0,<10.0.0
+scipy>=1.15.0,<2.0.0
+soundfile>=0.13.0,<0.14.0
+matplotlib>=3.7.0,<4.0.0
+pytest
